@@ -17,4 +17,4 @@ export const getInitials = (name = '') => {
 export const truncate = (text = '', length = 60) => {
   if (text.length <= length) return text;
   return text.slice(0, length) + '...';
-};
+}; 
