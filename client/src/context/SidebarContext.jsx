@@ -15,7 +15,7 @@ export const SidebarProvider = ({ children }) => {
     <SidebarContext.Provider value={{ isOpen, toggle, close }}>
       {children}
     </SidebarContext.Provider>
-  );
+  ); 
 };
 
 export const useSidebar = () => useContext(SidebarContext);
