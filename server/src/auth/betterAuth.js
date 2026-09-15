@@ -6,7 +6,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const COOKIE_NAME = 'token';
 
 /**
- * Hash a plain password
+ * Hash a plain password 
  */
 const hashPassword = async (plainPassword) => {
   const salt = await bcrypt.genSalt(10);
