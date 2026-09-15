@@ -7,7 +7,7 @@ const generateSecureOtp = () => {
   return crypto.randomInt(100000, 1000000).toString();
 };
 
-/**
+/** 
  * Hash an OTP using SHA-256
  */
 const hashOtp = (otp) => {
