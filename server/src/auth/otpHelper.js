@@ -16,7 +16,7 @@ const hashOtp = (otp) => {
 
 /**
  * Verify an entered OTP against stored SHA-256 hash using timingSafeEqual
- */
+ */ 
 const verifyOtpHash = (enteredOtp, storedHash) => {
   if (!enteredOtp || !storedHash) return false;
   const computedHash = hashOtp(enteredOtp);
