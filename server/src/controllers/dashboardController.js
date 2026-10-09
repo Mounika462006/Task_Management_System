@@ -16,7 +16,7 @@ const getAdminDashboard = async (req, res, next) => {
 }; 
 
 /**
- * GET /api/dashboard/employee (EMPLOYEE only)
+ * GET /api/dashboard/employee (EMPLOYEE only) 
  */
 const getEmployeeDashboard = async (req, res, next) => {
   try {
