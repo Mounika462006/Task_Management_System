@@ -13,7 +13,7 @@ const getAdminDashboard = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+}; 
 
 /**
  * GET /api/dashboard/employee (EMPLOYEE only)
