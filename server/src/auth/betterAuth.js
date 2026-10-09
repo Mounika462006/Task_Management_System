@@ -22,7 +22,7 @@ const comparePassword = async (plainPassword, hashedPassword) => {
 
 /**
  * Sign a JWT token with user payload
- */
+ */ 
 const signToken = (user) => {
   return jwt.sign(
     {
