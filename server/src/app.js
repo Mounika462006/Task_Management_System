@@ -29,6 +29,7 @@ app.use(helmet());
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 const allowedOrigins = [
   clientUrl,
+  'https://task-management-system-two-xi.vercel.app',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5174',
@@ -42,6 +43,7 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.indexOf(origin) !== -1 ||
+        origin.endsWith('.vercel.app') ||
         (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))
       ) {
         return callback(null, true);

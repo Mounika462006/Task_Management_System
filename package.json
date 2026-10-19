@@ -10,7 +10,11 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "dev": "npm --prefix server run dev",
-    "build": "npm --prefix client run build"
-  }
+    "build": "npm --prefix server install && npm --prefix client install && npm --prefix client run build"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
 }
   

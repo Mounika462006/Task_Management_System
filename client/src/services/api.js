@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? '/api' : 'https://task-management-system-uu4p.onrender.com/api');
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
