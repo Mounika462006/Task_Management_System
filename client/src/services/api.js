@@ -1,11 +1,22 @@
 import axios from 'axios';
 
-const baseURL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? '/api' : 'https://task-management-system-uu4p.onrender.com/api');
+let apiBase = import.meta.env.VITE_API_URL;
+
+if (!apiBase) {
+  apiBase = import.meta.env.DEV
+    ? '/api'
+    : 'https://task-management-system-uu4p.onrender.com/api';
+} else {
+  // Strip trailing slashes
+  apiBase = apiBase.replace(/\/+$/, '');
+  // If backend URL was entered without /api, append /api automatically
+  if (!apiBase.endsWith('/api')) {
+    apiBase += '/api';
+  }
+}
 
 const api = axios.create({
-  baseURL,
+  baseURL: apiBase,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
