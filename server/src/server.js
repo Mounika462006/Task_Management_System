@@ -1,5 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+
+// Load .env for local development (server/.env or root/.env).
+// On Vercel, environment variables are injected automatically — dotenv is a no-op when .env is absent.
 const serverEnvPath = path.resolve(__dirname, '../.env');
 const rootEnvPath = path.resolve(__dirname, '../../.env');
 if (fs.existsSync(serverEnvPath)) {
@@ -9,48 +12,85 @@ if (fs.existsSync(serverEnvPath)) {
 } else {
   require('dotenv').config();
 }
-const app = require('./app');
+
 const connectDB = require('./config/database');
 const { verifyTransporter } = require('./config/mail');
 const { ensureAdminUser, ensureDefaultEmployees } = require('./services/adminService');
 
-const PORT = process.env.PORT || 5000;
+/**
+ * Lazy initialization promise.
+ * Ensures MongoDB connection + admin/employee seeding runs only once per
+ * process lifetime — both on Vercel warm invocations and local dev restarts.
+ * On failure the promise is cleared so the next request can retry.
+ */
+let initPromise = null;
 
-const startServer = async () => {
-  try {
-    // Connect to database
-    await connectDB();
-
-    // Ensure fixed Admin account is synchronized in MongoDB
-    await ensureAdminUser();
-
-    // Ensure initial employee accounts exist for task assignments
-    await ensureDefaultEmployees();
-
-    // Verify SMTP configuration in background without blocking server startup
-    verifyTransporter().catch((err) => console.error('[EmailService] SMTP check error:', err.message));
-
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[TaskFlow Server] Running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-    });
-
-    // Graceful shutdown
-    const shutdown = (signal) => {
-      console.log(`\n[TaskFlow Server] Received ${signal}. Closing HTTP server gracefully...`);
-      server.close(() => {
-        console.log('[TaskFlow Server] HTTP server closed.');
-        process.exit(0);
-      });
-    };
-
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-  } catch (error) {
-    console.error(`[TaskFlow Server] Failed to start: ${error.message}`);
-    process.exit(1);
-  }
+const initialize = async () => {
+  await connectDB();
+  await ensureAdminUser().catch((e) => console.error('[Init] Admin init error:', e.message));
+  await ensureDefaultEmployees().catch((e) => console.error('[Init] Employees init error:', e.message));
+  verifyTransporter().catch((e) => console.error('[EmailService] SMTP check error:', e.message));
+  return require('./app');
 };
 
-startServer();
+const getApp = () => {
+  if (!initPromise) {
+    initPromise = initialize().catch((err) => {
+      initPromise = null; // allow retry on next request
+      throw err;
+    });
+  }
+  return initPromise;
+};
 
-module.exports = { startServer };
+/**
+ * Vercel serverless entry point.
+ * Vercel calls module.exports as the HTTP handler for every request.
+ * The Express app is initialized lazily before the first request is served.
+ */
+const handler = (req, res) => {
+  getApp()
+    .then((app) => app(req, res))
+    .catch((err) => {
+      console.error('[Server] Fatal initialization error:', err.message);
+      if (!res.headersSent) {
+        res.status(503).json({
+          success: false,
+          message: 'Service temporarily unavailable. Please try again in a moment.',
+        });
+      }
+    });
+};
+
+// Start HTTP server only in local development.
+// Vercel automatically sets process.env.VERCEL = '1' in its runtime.
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+
+  getApp()
+    .then((app) => {
+      const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(
+          `[TaskFlow Server] Running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`
+        );
+      });
+
+      const shutdown = (signal) => {
+        console.log(`\n[TaskFlow Server] Received ${signal}. Closing HTTP server gracefully...`);
+        server.close(() => {
+          console.log('[TaskFlow Server] HTTP server closed.');
+          process.exit(0);
+        });
+      };
+
+      process.on('SIGTERM', () => shutdown('SIGTERM'));
+      process.on('SIGINT', () => shutdown('SIGINT'));
+    })
+    .catch((err) => {
+      console.error(`[TaskFlow Server] Failed to start: ${err.message}`);
+      process.exit(1);
+    });
+}
+
+// Export handler for Vercel serverless runtime
+module.exports = handler;

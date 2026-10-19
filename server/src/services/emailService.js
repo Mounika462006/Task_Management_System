@@ -1,5 +1,3 @@
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { transporter, fromEmail, adminEmail } = require('../config/mail');
 
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';

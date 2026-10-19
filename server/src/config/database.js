@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
 
+// Cached connection reference.
+// On Vercel, the Node.js process is reused across warm invocations.
+// This guard prevents re-connecting (and exhausting Atlas connection pool) on every request.
+let cachedConnection = null;
+
 const connectDB = async () => {
+  // Return cached connection if Mongoose is already connected
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    return cachedConnection;
+  }
+
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri) {
@@ -21,28 +31,14 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(mongoUri, options);
+    cachedConnection = conn;
     console.log(`[MongoDB] Connected successfully to: ${conn.connection.host}/${conn.connection.name}`);
     return conn;
   } catch (error) {
     console.error(`[MongoDB] Connection error: ${error.message}`);
-    const localUri = 'mongodb://127.0.0.1:27017/task_management';
-    if (mongoUri !== localUri) {
-      console.warn(`[MongoDB] Atlas/Primary cluster unreachable (likely IP whitelist). Falling back to local MongoDB: ${localUri}`);
-      try {
-        await mongoose.disconnect().catch(() => {});
-        const localConn = await mongoose.connect(localUri, {
-          family: 4,
-          serverSelectionTimeoutMS: 5000,
-          connectTimeoutMS: 5000,
-        });
-        console.log(`[MongoDB] Connected successfully to local database: ${localConn.connection.host}/${localConn.connection.name}`);
-        return localConn;
-      } catch (localError) {
-        console.error(`[MongoDB] Local fallback connection also failed: ${localError.message}`);
-      }
-    }
     throw error;
   }
 };
 
 module.exports = connectDB;
+

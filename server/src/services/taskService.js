@@ -1,5 +1,3 @@
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const Task = require('../models/Task');
 const User = require('../models/User');
 const { getPaginationOptions, formatPaginationMeta } = require('../utils/pagination');

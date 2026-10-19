@@ -42,8 +42,7 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.indexOf(origin) !== -1 ||
-        process.env.NODE_ENV !== 'production' ||
-        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
+        (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))
       ) {
         return callback(null, true);
       }
