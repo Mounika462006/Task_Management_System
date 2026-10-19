@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Layers,
   Lock,
   User,
   Eye,
@@ -13,11 +12,15 @@ import {
   Zap,
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import Logo from '../../components/common/Logo';
 
-export const Login = () => {
+export const Login = ({ roleMode: propRoleMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+
+  const isExplicitAdminRoute = location.pathname.includes('/admin');
+  const roleMode = propRoleMode || (isExplicitAdminRoute ? 'ADMIN' : 'EMPLOYEE');
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +32,16 @@ export const Login = () => {
 
   const from = location.state?.from?.pathname || null;
 
+  const handleRoleTabChange = (targetRole) => {
+    setError('');
+    setForgotNotice(false);
+    if (targetRole === 'ADMIN') {
+      navigate('/admin/login', { replace: true });
+    } else {
+      navigate('/employee/login', { replace: true });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -38,7 +51,7 @@ export const Login = () => {
     const cleanPassword = password.trim();
 
     if (!cleanIdentifier) {
-      setError('Please enter your corporate email address or username.');
+      setError(`Please enter your ${roleMode === 'ADMIN' ? 'administrator' : 'employee'} email address or username.`);
       return;
     }
     if (!cleanPassword) {
@@ -49,7 +62,7 @@ export const Login = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await login(cleanIdentifier, cleanPassword);
+      const res = await login(cleanIdentifier, cleanPassword, roleMode);
       if (res.success && res.user) {
         if (from) {
           navigate(from, { replace: true });
@@ -75,31 +88,7 @@ export const Login = () => {
       {/* Left Column: Full-Screen Showcase Panel */}
       <div className="login-fullpage-showcase">
         {/* Brand Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '11px',
-              backgroundColor: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
-            }}
-          >
-            <Layers size={22} strokeWidth={2.2} />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em' }}>
-              TaskFlow
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Enterprise Task Management
-            </div>
-          </div>
-        </div>
+        <Logo size="lg" subtitle="Enterprise Task Management" to="/" />
 
         {/* Center Content */}
         <div style={{ margin: 'auto 0', padding: '2.5rem 0', maxWidth: '580px' }}>
@@ -270,7 +259,80 @@ export const Login = () => {
       {/* Right Column: Full-Screen Form Panel */}
       <div className="login-fullpage-formpanel">
         <div className="login-form-card">
-          <div style={{ marginBottom: '2rem' }}>
+          {/* Mobile-Only Brand Logo Header */}
+          <div className="login-mobile-brand" style={{ display: 'none', marginBottom: '1.75rem', justifyContent: 'center' }}>
+            <Logo size="md" subtitle="Enterprise Task Management" to="/" />
+          </div>
+          {/* Role Navigation Switcher (Inspired by Screenshot 1, Preserving TaskFlow Theme) */}
+          <div
+            role="tablist"
+            aria-label="Login Role Selection"
+            style={{
+              display: 'flex',
+              padding: '4px',
+              backgroundColor: '#f1f5f9',
+              borderRadius: '10px',
+              marginBottom: '1.75rem',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <button
+              type="button"
+              id="tab-employee-login"
+              role="tab"
+              aria-selected={roleMode === 'EMPLOYEE'}
+              onClick={() => handleRoleTabChange('EMPLOYEE')}
+              style={{
+                flex: 1,
+                padding: '0.625rem 1rem',
+                borderRadius: '7px',
+                border: 'none',
+                fontSize: '0.875rem',
+                fontWeight: roleMode === 'EMPLOYEE' ? 600 : 500,
+                backgroundColor: roleMode === 'EMPLOYEE' ? '#ffffff' : 'transparent',
+                color: roleMode === 'EMPLOYEE' ? '#0f172a' : '#64748b',
+                boxShadow: roleMode === 'EMPLOYEE' ? '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <User size={16} color={roleMode === 'EMPLOYEE' ? '#2563eb' : '#64748b'} />
+              <span>Employee</span>
+            </button>
+            <button
+              type="button"
+              id="tab-admin-login"
+              role="tab"
+              aria-selected={roleMode === 'ADMIN'}
+              onClick={() => handleRoleTabChange('ADMIN')}
+              style={{
+                flex: 1,
+                padding: '0.625rem 1rem',
+                borderRadius: '7px',
+                border: 'none',
+                fontSize: '0.875rem',
+                fontWeight: roleMode === 'ADMIN' ? 600 : 500,
+                backgroundColor: roleMode === 'ADMIN' ? '#ffffff' : 'transparent',
+                color: roleMode === 'ADMIN' ? '#0f172a' : '#64748b',
+                boxShadow: roleMode === 'ADMIN' ? '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <ShieldCheck size={16} color={roleMode === 'ADMIN' ? '#2563eb' : '#64748b'} />
+              <span>Admin</span>
+            </button>
+          </div>
+
+          <div style={{ marginBottom: '1.75rem' }}>
             <h2
               style={{
                 fontSize: '1.75rem',
@@ -280,10 +342,12 @@ export const Login = () => {
                 margin: '0 0 0.35rem 0',
               }}
             >
-              Sign In
+              {roleMode === 'ADMIN' ? 'Admin Sign In' : 'Sign In'}
             </h2>
             <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
-              Enter your corporate credentials to access your workspace.
+              {roleMode === 'ADMIN'
+                ? 'Enter your administrator credentials to access the management console.'
+                : 'Enter your corporate credentials to access your workspace.'}
             </p>
           </div>
 
@@ -345,7 +409,7 @@ export const Login = () => {
                   display: 'block',
                 }}
               >
-                Email or Username
+                {roleMode === 'ADMIN' ? 'Admin Email or Username' : 'Email or Username'}
               </label>
               <div style={{ position: 'relative' }}>
                 <User
@@ -373,7 +437,7 @@ export const Login = () => {
                     borderColor: '#cbd5e1',
                     color: '#0f172a',
                   }}
-                  placeholder="name@company.com or username"
+                  placeholder={roleMode === 'ADMIN' ? 'admin.taskflow@gmail.com or admin' : 'name@company.com or username'}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   disabled={isSubmitting}
@@ -440,7 +504,7 @@ export const Login = () => {
                     borderColor: '#cbd5e1',
                     color: '#0f172a',
                   }}
-                  placeholder="Enter your password"
+                  placeholder={roleMode === 'ADMIN' ? 'Enter your admin password' : 'Enter your password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isSubmitting}
@@ -515,11 +579,28 @@ export const Login = () => {
                 <span>Signing In...</span>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>{roleMode === 'ADMIN' ? 'Sign In as Admin' : 'Sign In'}</span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
+
+            {/* Security Assurance Badge (from Screenshot 1) */}
+            <div
+              style={{
+                textAlign: 'center',
+                marginTop: '1.5rem',
+                fontSize: '0.75rem',
+                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.375rem',
+              }}
+            >
+              <ShieldCheck size={14} color="#94a3b8" />
+              <span>Secured by JWT authentication and end-to-end encryption</span>
+            </div>
           </form>
         </div>
       </div>
@@ -578,6 +659,9 @@ export const Login = () => {
           .login-fullpage-formpanel {
             min-height: auto;
             padding: 2.5rem 1.5rem 3.5rem;
+          }
+          .login-mobile-brand {
+            display: flex !important;
           }
         }
       `}</style>

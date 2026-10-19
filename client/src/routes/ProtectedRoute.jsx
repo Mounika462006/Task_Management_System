@@ -20,7 +20,9 @@ export const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const isAccessingAdmin = location.pathname.startsWith('/admin');
+    const targetLogin = isAccessingAdmin ? '/admin/login' : '/employee/login';
+    return <Navigate to={targetLogin} state={{ from: location }} replace />;
   }
 
   return children;

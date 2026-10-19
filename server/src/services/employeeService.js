@@ -6,7 +6,9 @@ const { AppError } = require('../middleware/errorMiddleware');
  * Get list of all employees with their assigned task counts (ADMIN only).
  */
 const getEmployees = async () => {
-  const employees = await User.find({ role: 'EMPLOYEE' })
+  const employees = await User.find({
+    role: { $in: ['EMPLOYEE', 'employee', 'Employee'] },
+  })
     .select('-password')
     .sort({ createdAt: -1 })
     .lean();

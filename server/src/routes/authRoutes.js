@@ -48,6 +48,26 @@ const otpLimiter = rateLimit({
 });
 
 router.post('/login', loginLimiter, validateBody(loginSchema), authController.login);
+router.post(
+  '/admin/login',
+  loginLimiter,
+  validateBody(loginSchema),
+  (req, res, next) => {
+    req.body.expectedRole = 'ADMIN';
+    next();
+  },
+  authController.login
+);
+router.post(
+  '/employee/login',
+  loginLimiter,
+  validateBody(loginSchema),
+  (req, res, next) => {
+    req.body.expectedRole = 'EMPLOYEE';
+    next();
+  },
+  authController.login
+);
 router.post('/register', registerLimiter, validateBody(registerEmployeeSchema), authController.register);
 router.post('/verify-otp', otpLimiter, validateBody(verifyOtpSchema), authController.verifyOtp);
 router.post('/resend-otp', otpLimiter, validateBody(resendOtpSchema), authController.resendOtp);

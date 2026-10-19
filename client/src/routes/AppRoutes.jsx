@@ -8,8 +8,13 @@ import EmployeeLayout from '../layouts/EmployeeLayout';
 // Route Guards
 import { ProtectedRoute, RoleRoute, PublicOnlyRoute } from './ProtectedRoute';
 
-// Auth Pages (Unified Common Login)
+// Auth Pages (Dedicated Employee & Admin Logins, Registration, Role Selection)
 import Login from '../pages/auth/Login';
+import AdminLogin from '../pages/auth/AdminLogin';
+import EmployeeLogin from '../pages/auth/EmployeeLogin';
+import Register from '../pages/auth/Register';
+import VerifyOtp from '../pages/auth/VerifyOtp';
+import RoleLanding from '../pages/auth/RoleLanding';
 
 // Admin Pages
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -33,12 +38,12 @@ import SettingsPage from '../pages/common/SettingsPage';
 export const AppRoutes = () => {
   return (
     <Routes>
-      {/* 1. Single Unified Common Login Page */}
+      {/* 1. Dedicated & Shared Login Pages */}
       <Route
         path="/"
         element={
           <PublicOnlyRoute>
-            <Login />
+            <Login roleMode="EMPLOYEE" />
           </PublicOnlyRoute>
         }
       />
@@ -46,20 +51,82 @@ export const AppRoutes = () => {
         path="/login"
         element={
           <PublicOnlyRoute>
-            <Login />
+            <Login roleMode="EMPLOYEE" />
           </PublicOnlyRoute>
         }
       />
-
-      {/* Legacy / Helper Route Redirects (All point to common login) */}
-      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-      <Route path="/employee/login" element={<Navigate to="/login" replace />} />
-      <Route path="/login/admin" element={<Navigate to="/login" replace />} />
-      <Route path="/login/employee" element={<Navigate to="/login" replace />} />
-      <Route path="/register" element={<Navigate to="/login" replace />} />
-      <Route path="/employee/register" element={<Navigate to="/login" replace />} />
-      <Route path="/verify-otp" element={<Navigate to="/login" replace />} />
-      <Route path="/employee/verify-otp" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/employee/login"
+        element={
+          <PublicOnlyRoute>
+            <EmployeeLogin />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/login/employee"
+        element={
+          <PublicOnlyRoute>
+            <EmployeeLogin />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/admin/login"
+        element={
+          <PublicOnlyRoute>
+            <AdminLogin />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/login/admin"
+        element={
+          <PublicOnlyRoute>
+            <AdminLogin />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/roles"
+        element={
+          <PublicOnlyRoute>
+            <RoleLanding />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/employee/register"
+        element={
+          <PublicOnlyRoute>
+            <Register />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicOnlyRoute>
+            <Register />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/employee/verify-otp"
+        element={
+          <PublicOnlyRoute>
+            <VerifyOtp />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/verify-otp"
+        element={
+          <PublicOnlyRoute>
+            <VerifyOtp />
+          </PublicOnlyRoute>
+        }
+      />
 
       {/* 2. Admin Protected Routes */}
       <Route

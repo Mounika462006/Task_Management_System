@@ -36,8 +36,10 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (identifier, password) => {
-    const payload = typeof identifier === 'object' ? identifier : { identifier, password };
+  const login = async (identifier, password, role) => {
+    const payload = typeof identifier === 'object'
+      ? identifier
+      : { identifier, password, ...(role ? { role, expectedRole: role } : {}) };
     const data = await authService.login(payload);
     if (data.success && data.user) {
       if (data.token) {

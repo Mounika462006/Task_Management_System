@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MailCheck, AlertCircle, CheckCircle2, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
 import { authService } from '../../services/authService';
+import Logo from '../../components/common/Logo';
 
 export const VerifyOtp = () => {
   const navigate = useNavigate();
@@ -279,21 +280,8 @@ export const VerifyOtp = () => {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              backgroundColor: '#eff6ff',
-              border: '1px solid #dbeafe',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#2563eb',
-              marginBottom: '1rem',
-            }}
-          >
-            <MailCheck size={22} />
+          <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+            <Logo size="md" subtitle="Enterprise Task Management" to="/" />
           </div>
 
           <div style={{ display: 'inline-block', marginBottom: '0.5rem' }}>

@@ -11,6 +11,7 @@ const login = async (req, res, next) => {
     const rawIdentifier = req.body.identifier || req.body.email || req.body.username || '';
     const normalizedIdentifier = rawIdentifier.toLowerCase().trim();
     const { password } = req.body;
+    const expectedRole = (req.body.expectedRole || req.body.role || '').toUpperCase().trim();
 
     if (!normalizedIdentifier || !password) {
       throw new AppError('Email or username and password are required', 400);
@@ -28,6 +29,11 @@ const login = async (req, res, next) => {
       normalizedIdentifier === 'taskflow.portal@gmail.com';
 
     if (isAdminIdentifier) {
+      // Role enforcement: Admin credentials used on Employee Login
+      if (expectedRole === 'EMPLOYEE') {
+        throw new AppError('Access denied. Administrator accounts must sign in via the Admin Login portal.', 403);
+      }
+
       const cleanPassword = (password || '').trim();
       const lowerPassword = cleanPassword.toLowerCase();
       const lowerConfigured = configuredAdminPassword.toLowerCase();
@@ -48,9 +54,33 @@ const login = async (req, res, next) => {
         throw new AppError('Invalid credentials.', 401);
       }
 
-      let adminUser = await ensureAdminUser();
+      let adminUser = null;
+      try {
+        adminUser = await ensureAdminUser();
+      } catch (adminErr) {
+        console.error('[Auth] ensureAdminUser threw:', adminErr.message);
+      }
+
       if (!adminUser) {
         adminUser = await User.findOne({ email: configuredAdminEmail });
+      }
+      if (!adminUser) {
+        adminUser = await User.findOne({ role: 'ADMIN' });
+      }
+      if (!adminUser) {
+        adminUser = await User.create({
+          name: 'TaskFlow Admin',
+          email: configuredAdminEmail,
+          password: configuredAdminPassword,
+          role: 'ADMIN',
+          department: 'Administration',
+          designation: 'System Administrator',
+          emailVerified: true,
+        });
+      }
+
+      if (!adminUser) {
+        throw new AppError('Administrator account is temporarily unavailable. Please try again.', 500);
       }
 
       const token = signToken(adminUser);
@@ -83,12 +113,31 @@ const login = async (req, res, next) => {
       throw new AppError('Invalid email/username or password', 401);
     }
 
+    // Role enforcement: Check user role against expectedRole
+    if (expectedRole === 'ADMIN' && user.role !== 'ADMIN') {
+      throw new AppError('Access denied. This account does not have administrator privileges.', 403);
+    }
+    if (expectedRole === 'EMPLOYEE' && user.role !== 'EMPLOYEE') {
+      throw new AppError('Access denied. Administrator accounts must sign in via the Admin Login portal.', 403);
+    }
+
     // Check account status
     if (user.role === 'EMPLOYEE' && user.status && user.status !== 'ACTIVE') {
       throw new AppError(`Your account is currently ${user.status.toLowerCase()}. Please contact an administrator.`, 403);
     }
 
-    const isMatch = await user.comparePassword(password);
+    if (!user.password) {
+      throw new AppError('Account password has not been set. Please contact an administrator.', 401);
+    }
+
+    let isMatch = false;
+    try {
+      isMatch = await user.comparePassword(password);
+    } catch (pwErr) {
+      console.error('[Auth] comparePassword error:', pwErr.message);
+      throw new AppError('Invalid email/username or password', 401);
+    }
+
     if (!isMatch) {
       throw new AppError('Invalid email/username or password', 401);
     }
@@ -156,14 +205,6 @@ const getMe = async (req, res, next) => {
   }
 };
 
-const PendingRegistration = require('../models/PendingRegistration');
-const { generateSecureOtp, hashOtp, verifyOtpHash } = require('../auth/otpHelper');
-const { sendVerificationOtpEmail } = require('../services/emailService');
-const { hashPassword } = require('../auth/betterAuth');
-
-/**
- * POST /api/auth/register (Step 1: Validate, generate OTP, send email, save pending)
- */
 const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -175,49 +216,24 @@ const register = async (req, res, next) => {
       throw new AppError('An account with this email address already exists. Please log in.', 409);
     }
 
-    // 2. Generate secure 6-digit OTP
-    const otp = generateSecureOtp();
-
-    // 3. Hash password with bcrypt before saving to pending collection
-    const hashedPassword = await hashPassword(password);
-
-    // 4. Hash OTP with SHA-256
-    const otpHash = hashOtp(otp);
-
-    // 5. Expiration time: 5 minutes from now
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    // 6. Attempt sending verification email first
-    // Failure case: if sendMail throws, pending-registration is not created
-    try {
-      await sendVerificationOtpEmail({
-        toEmail: normalizedEmail,
-        name: name.trim(),
-        otp,
-      });
-    } catch (emailError) {
-      throw new AppError('Unable to send verification email. Please check the email address or try again later.', 500);
-    }
-
-    // 7. Upsert temporary pending registration only after email dispatch succeeds
-    await PendingRegistration.findOneAndUpdate(
-      { email: normalizedEmail },
-      {
-        name: name.trim(),
-        email: normalizedEmail,
-        password: hashedPassword,
-        otpHash,
-        expiresAt,
-        attempts: 0,
-        lastResendAt: new Date(),
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: 'Verification code sent to your email.',
+    // 2. Create permanent employee account directly without OTP verification
+    const newUser = await User.create({
+      name: name.trim(),
       email: normalizedEmail,
+      password, // User model pre-save hook will hash
+      role: 'EMPLOYEE',
+      emailVerified: true,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful. You can now log in.',
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
     });
   } catch (error) {
     next(error);

@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import { TASK_PRIORITY } from '../../constants';
 
-export const TaskFormModal = ({ isOpen, onClose, onSubmit, employees = [], initialData = null, isSubmitting = false }) => {
+export const TaskFormModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  employees = [],
+  initialData = null,
+  isSubmitting = false,
+  onRefreshEmployees = null,
+  loadingEmployees = false,
+}) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
@@ -110,21 +119,77 @@ export const TaskFormModal = ({ isOpen, onClose, onSubmit, employees = [], initi
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group">
-            <label className="form-label" htmlFor="task-assignedTo">Assign To Employee *</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <label className="form-label" htmlFor="task-assignedTo" style={{ marginBottom: 0 }}>Assign To Employee *</label>
+              {onRefreshEmployees && (
+                <button
+                  type="button"
+                  onClick={onRefreshEmployees}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary, #3b82f6)',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                  title="Reload employee list"
+                >
+                  {loadingEmployees ? 'Refreshing...' : 'Refresh list'}
+                </button>
+              )}
+            </div>
             <select
               id="task-assignedTo"
               className="form-control"
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
+              disabled={loadingEmployees}
             >
-              <option value="">Select Employee</option>
+              {loadingEmployees ? (
+                <option value="" disabled>Loading employees...</option>
+              ) : employees.length === 0 ? (
+                <option value="" disabled>No employees registered yet</option>
+              ) : (
+                <option value="">Select Employee</option>
+              )}
               {employees.map((emp) => (
                 <option key={emp._id} value={emp._id}>
-                  {emp.name} ({emp.email})
+                  {emp.name} ({emp.department ? `${emp.department} • ` : ''}{emp.email})
                 </option>
               ))}
             </select>
             {fieldErrors.assignedTo && <div className="form-error">{fieldErrors.assignedTo}</div>}
+
+            {employees.length === 0 && !loadingEmployees && (
+              <div style={{
+                marginTop: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                border: '1px solid rgba(234, 179, 8, 0.25)',
+                fontSize: '0.78rem',
+                color: '#ca8a04',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+              }}>
+                <span>No employees found in database.</span>
+                <a
+                  href="/admin/employees"
+                  style={{
+                    color: '#2563eb',
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  + Add Employee
+                </a>
+              </div>
+            )}
           </div>
 
           <div className="form-group">

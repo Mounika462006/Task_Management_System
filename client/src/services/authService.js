@@ -6,6 +6,16 @@ export const authService = {
     return response.data;
   },
 
+  adminLogin: async (credentials) => {
+    const response = await api.post('/auth/admin/login', credentials);
+    return response.data;
+  },
+
+  employeeLogin: async (credentials) => {
+    const response = await api.post('/auth/employee/login', credentials);
+    return response.data;
+  },
+
   logout: async () => {
     const response = await api.post('/auth/logout');
     return response.data;

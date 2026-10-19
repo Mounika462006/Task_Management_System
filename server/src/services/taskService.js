@@ -190,7 +190,11 @@ const updateTaskStatus = async (currentUser, taskId, newStatus) => {
     throw new AppError('You are not authorized to perform this action', 403);
   }
 
+  // Capture previous status and creation date before updating
   const previousStatus = task.status;
+  const taskCreatedAt = task.createdAt;
+  const statusChangeTime = new Date();
+
   task.status = newStatus;
   await task.save();
   console.log('[Task] Status updated successfully');
@@ -205,15 +209,25 @@ const updateTaskStatus = async (currentUser, taskId, newStatus) => {
   if (currentUser.role === 'EMPLOYEE' && previousStatus !== newStatus) {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin.taskflow@gmail.com';
 
+    // Retrieve actual employee details from database/user session (strictly avoiding 'me')
+    const employeeName = (currentUser && currentUser.name && currentUser.name.trim().toLowerCase() !== 'me')
+      ? currentUser.name.trim()
+      : ((task.assignedTo && task.assignedTo.name && task.assignedTo.name.trim().toLowerCase() !== 'me')
+        ? task.assignedTo.name.trim()
+        : 'Employee');
+    const employeeEmail = currentUser.email || (task.assignedTo && task.assignedTo.email) || '';
+
     try {
       const emailResult = await sendTaskStatusUpdatedEmail({
         adminEmail,
-        employeeName: currentUser.name,
-        taskTitle: task.title,
-        taskId: task._id,
+        employeeName,
+        employeeEmail,
+        taskTitle: updatedTask.title || task.title,
+        taskId: updatedTask._id || task._id,
         previousStatus,
         newStatus,
-        updatedAt: new Date(),
+        taskCreatedAt: taskCreatedAt || updatedTask.createdAt,
+        statusUpdatedAt: updatedTask.updatedAt || statusChangeTime,
       });
       emailSent = Boolean(emailResult && emailResult.success);
     } catch (emailError) {

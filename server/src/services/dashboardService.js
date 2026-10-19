@@ -7,7 +7,7 @@ const User = require('../models/User');
  */
 const getAdminDashboard = async () => {
   const [totalEmployees, taskStats, priorityStats, recentTasks] = await Promise.all([
-    User.countDocuments({ role: 'EMPLOYEE' }),
+    User.countDocuments({ role: 'EMPLOYEE' }).catch(() => 0),
     Task.aggregate([
       {
         $group: {
@@ -24,7 +24,7 @@ const getAdminDashboard = async () => {
           },
         },
       },
-    ]),
+    ]).catch(() => []),
     Task.aggregate([
       {
         $group: {
@@ -32,15 +32,16 @@ const getAdminDashboard = async () => {
           count: { $sum: 1 },
         },
       },
-    ]),
+    ]).catch(() => []),
     Task.find()
       .populate('assignedTo', 'name email')
       .sort({ createdAt: -1 })
       .limit(5)
-      .lean(),
+      .lean()
+      .catch(() => []),
   ]);
 
-  const stats = taskStats[0] || {
+  const stats = (Array.isArray(taskStats) && taskStats[0]) || {
     totalTasks: 0,
     notStarted: 0,
     inProgress: 0,
@@ -53,20 +54,22 @@ const getAdminDashboard = async () => {
     HIGH: 0,
     URGENT: 0,
   };
-  priorityStats.forEach((p) => {
-    if (priorityBreakdown[p._id] !== undefined) {
-      priorityBreakdown[p._id] = p.count;
-    }
-  });
+  if (Array.isArray(priorityStats)) {
+    priorityStats.forEach((p) => {
+      if (p && priorityBreakdown[p._id] !== undefined) {
+        priorityBreakdown[p._id] = p.count;
+      }
+    });
+  }
 
   return {
-    totalTasks: stats.totalTasks,
-    notStarted: stats.notStarted,
-    inProgress: stats.inProgress,
-    completed: stats.completed,
-    totalEmployees,
+    totalTasks: stats.totalTasks || 0,
+    notStarted: stats.notStarted || 0,
+    inProgress: stats.inProgress || 0,
+    completed: stats.completed || 0,
+    totalEmployees: totalEmployees || 0,
     priorityBreakdown,
-    recentTasks,
+    recentTasks: Array.isArray(recentTasks) ? recentTasks : [],
   };
 };
 
@@ -93,7 +96,7 @@ const getEmployeeDashboard = async (employeeId) => {
           },
         },
       },
-    ]),
+    ]).catch(() => []),
     Task.aggregate([
       { $match: { assignedTo: employeeId } },
       {
@@ -102,14 +105,15 @@ const getEmployeeDashboard = async (employeeId) => {
           count: { $sum: 1 },
         },
       },
-    ]),
+    ]).catch(() => []),
     Task.find({ assignedTo: employeeId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .lean(),
+      .lean()
+      .catch(() => []),
   ]);
 
-  const stats = taskStats[0] || {
+  const stats = (Array.isArray(taskStats) && taskStats[0]) || {
     totalTasks: 0,
     notStarted: 0,
     inProgress: 0,
@@ -122,20 +126,22 @@ const getEmployeeDashboard = async (employeeId) => {
     HIGH: 0,
     URGENT: 0,
   };
-  priorityStats.forEach((p) => {
-    if (priorityBreakdown[p._id] !== undefined) {
-      priorityBreakdown[p._id] = p.count;
-    }
-  });
+  if (Array.isArray(priorityStats)) {
+    priorityStats.forEach((p) => {
+      if (p && priorityBreakdown[p._id] !== undefined) {
+        priorityBreakdown[p._id] = p.count;
+      }
+    });
+  }
 
   return {
-    totalTasks: stats.totalTasks,
-    notStarted: stats.notStarted,
-    inProgress: stats.inProgress,
-    completed: stats.completed,
+    totalTasks: stats.totalTasks || 0,
+    notStarted: stats.notStarted || 0,
+    inProgress: stats.inProgress || 0,
+    completed: stats.completed || 0,
     totalEmployees: null,
     priorityBreakdown,
-    recentTasks,
+    recentTasks: Array.isArray(recentTasks) ? recentTasks : [],
   };
 };
 

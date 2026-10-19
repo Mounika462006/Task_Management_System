@@ -9,6 +9,7 @@ const loginSchema = z
       .string({ required_error: 'Password is required' })
       .min(1, 'Password cannot be empty'),
     role: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
+    expectedRole: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
   })
   .refine((data) => Boolean(data.identifier || data.email || data.username), {
     message: 'Email or Username is required',

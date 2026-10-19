@@ -5,9 +5,9 @@ import {
   Shield,
   UserCheck,
   ArrowRight,
-  Layers,
 } from 'lucide-react';
 import TaskFlowIllustration from '../../components/common/TaskFlowIllustration';
+import Logo from '../../components/common/Logo';
 
 export const RoleLanding = () => {
   const navigate = useNavigate();
@@ -54,53 +54,8 @@ export const RoleLanding = () => {
         >
           <div>
             {/* Logo & Brand Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-              <div
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '8px',
-                  backgroundColor: '#2563eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff',
-                }}
-              >
-                <Layers size={22} strokeWidth={2.2} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span
-                    style={{
-                      fontSize: '1.25rem',
-                      fontWeight: 700,
-                      letterSpacing: '-0.02em',
-                      color: '#0f172a',
-                    }}
-                  >
-                    TaskFlow
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '0.6875rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      padding: '2px 8px',
-                      borderRadius: '9999px',
-                      backgroundColor: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                    }}
-                  >
-                    Enterprise
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0, fontWeight: 500 }}>
-                  Enterprise Task Management System
-                </p>
-              </div>
+            <div style={{ marginBottom: '1.75rem' }}>
+              <Logo size="md" subtitle="Enterprise Task Management System" badgeText="Enterprise" to="/" />
             </div>
 
             {/* Main Heading & Description */}

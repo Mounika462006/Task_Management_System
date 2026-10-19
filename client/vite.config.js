@@ -7,9 +7,24 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false,
+        timeout: 30000,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.warn('[vite proxy error]', err.message);
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  success: false,
+                  message: 'The server is temporarily unavailable. Please verify the backend is running.',
+                })
+              );
+            }
+          });
+        },
       },
     },
   },

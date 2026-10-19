@@ -13,6 +13,7 @@ import useDebounce from '../../hooks/useDebounce';
 export const Tasks = () => {
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,19 +41,30 @@ export const Tasks = () => {
   };
 
   // Load employees for assignment dropdown
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const res = await employeeService.getEmployees();
-        if (res.success) {
-          setEmployees(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to load employees for dropdown:', err);
+  const fetchEmployees = useCallback(async () => {
+    try {
+      setLoadingEmployees(true);
+      const res = await employeeService.getEmployees();
+      if (res.success && Array.isArray(res.data)) {
+        setEmployees(res.data);
       }
-    };
-    fetchEmployees();
+    } catch (err) {
+      console.error('Failed to load employees for dropdown:', err);
+    } finally {
+      setLoadingEmployees(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  // Refresh employee list whenever create/edit modal is opened
+  useEffect(() => {
+    if (isFormModalOpen) {
+      fetchEmployees();
+    }
+  }, [isFormModalOpen, fetchEmployees]);
 
   // Fetch tasks with server-side search, filters, and pagination
   const fetchTasks = useCallback(async () => {
@@ -302,6 +314,8 @@ export const Tasks = () => {
           employees={employees}
           initialData={editingTask}
           isSubmitting={isSubmitting}
+          onRefreshEmployees={fetchEmployees}
+          loadingEmployees={loadingEmployees}
         />
 
         {/* Delete Confirmation Modal */}

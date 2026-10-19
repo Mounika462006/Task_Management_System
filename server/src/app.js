@@ -1,5 +1,14 @@
+const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const serverEnvPath = path.resolve(__dirname, '../.env');
+const rootEnvPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(serverEnvPath)) {
+  require('dotenv').config({ path: serverEnvPath });
+} else if (fs.existsSync(rootEnvPath)) {
+  require('dotenv').config({ path: rootEnvPath });
+} else {
+  require('dotenv').config();
+}
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -22,6 +31,8 @@ const allowedOrigins = [
   clientUrl,
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
 ];
 
 app.use(
@@ -29,7 +40,11 @@ app.use(
     origin: function (origin, callback) {
       // allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        process.env.NODE_ENV !== 'production' ||
+        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
+      ) {
         return callback(null, true);
       }
       return callback(new Error('CORS blocked origin: ' + origin));

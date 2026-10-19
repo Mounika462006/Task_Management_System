@@ -77,15 +77,17 @@ async function runVerification() {
     // -------------------------------------------------------------
     console.log('\n--- FLOW C: Testing Task Status Update Notification to Admin ---');
     console.log('Recipient: process.env.ADMIN_EMAIL ->', process.env.ADMIN_EMAIL);
-    console.log('Expected Subject: TaskFlow - Task Status Updated');
+    console.log('Expected Subject: TaskFlow - Task Status Updated: Deliver Sprint Q3 Features');
 
     sendTaskStatusUpdatedEmail({
       employeeName: 'Mounika',
+      employeeEmail: 'employee.mounika@taskflow.dev',
       taskTitle: 'Deliver Sprint Q3 Features',
       taskId: '67a89bc34def567890123456',
       previousStatus: 'NOT_STARTED',
       newStatus: 'IN_PROGRESS',
-      updatedAt: new Date(),
+      taskCreatedAt: new Date(Date.now() - 86400000 * 2),
+      statusUpdatedAt: new Date(),
     });
     console.log('   Result: PASS. Real delivery initiated to process.env.ADMIN_EMAIL.');
 

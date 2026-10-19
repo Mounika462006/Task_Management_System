@@ -17,6 +17,7 @@ export const TaskDetails = () => {
 
   const [task, setTask] = useState(null);
   const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -28,6 +29,13 @@ export const TaskDetails = () => {
     fetchTask();
     fetchEmployees();
   }, [id]);
+
+  // Refresh employees when edit modal is opened
+  useEffect(() => {
+    if (isEditModalOpen) {
+      fetchEmployees();
+    }
+  }, [isEditModalOpen]);
 
   const fetchTask = async () => {
     try {
@@ -46,12 +54,15 @@ export const TaskDetails = () => {
 
   const fetchEmployees = async () => {
     try {
+      setLoadingEmployees(true);
       const res = await employeeService.getEmployees();
-      if (res.success) {
+      if (res.success && Array.isArray(res.data)) {
         setEmployees(res.data);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load employees for dropdown:', err);
+    } finally {
+      setLoadingEmployees(false);
     }
   };
 
@@ -256,6 +267,8 @@ export const TaskDetails = () => {
           employees={employees}
           initialData={task}
           isSubmitting={isSubmitting}
+          onRefreshEmployees={fetchEmployees}
+          loadingEmployees={loadingEmployees}
         />
 
         {/* Delete Confirmation Modal */}

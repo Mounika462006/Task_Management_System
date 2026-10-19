@@ -58,67 +58,6 @@ const formatStatus = (status) => {
 };
 
 /**
- * Flow A: Sends Email Verification OTP to an employee during registration.
- * Blocking/awaitable so caller can guarantee email was dispatched before saving registration.
- * Never logs the OTP value or echoes credentials.
- */
-const sendVerificationOtpEmail = async ({ toEmail, name, otp }) => {
-  if (!toEmail) {
-    throw new Error('No recipient email provided.');
-  }
-
-  const normalizedTo = toEmail.trim().toLowerCase();
-
-  // Guard against sending real emails to demo/placeholder domains
-  if (isPlaceholderEmail(normalizedTo)) {
-    console.log(`[EmailService] Skipping real OTP email delivery for demo address: ${normalizedTo}`);
-    return { skipped: true, reason: 'placeholder_email' };
-  }
-
-  const employeeName = name ? name.trim() : 'Team Member';
-
-  const mailOptions = {
-    from: fromEmail,
-    to: normalizedTo,
-    subject: 'TaskFlow - Verify Your Email',
-    text: `Hello ${employeeName},\n\nYour TaskFlow verification code is:\n\n${otp}\n\nThis code will expire in 5 minutes.\n\nRegards,\nTaskFlow System`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-        <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
-          <h2 style="color: #2563eb; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">TaskFlow System</h2>
-          <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Employee Email Verification</p>
-        </div>
-        
-        <p style="color: #1e293b; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>${employeeName}</strong>,</p>
-        <p style="color: #334155; font-size: 15px; margin: 0 0 20px 0; line-height: 1.5;">Your TaskFlow verification code is:</p>
-        
-        <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; text-align: center; margin: 24px 0; border: 1px dashed #cbd5e1;">
-          <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #0f172a;">${otp}</span>
-        </div>
-        
-        <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 20px 0 28px 0;">
-          This code will expire in <strong>5 minutes</strong>.
-        </p>
-        
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; font-size: 14px; line-height: 1.6;">
-          Regards,<br />
-          <strong style="color: #0f172a;">TaskFlow System</strong>
-        </div>
-      </div>
-    `,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EmailService] Verification OTP email successfully dispatched to ${normalizedTo}`);
-    return info;
-  } catch (error) {
-    console.error(`[EmailService] Failed to send verification OTP email: ${error.message}`);
-    throw error;
-  }
-};
-
-/**
  * Flow B: Sends Task Assigned Email to the employee's registered email address.
  * Non-blocking: failures are logged server-side only and do not fail the task-creation request.
  * Seed accounts ending in @example.com are safely skipped so Gmail never generates "Address not found" bounce notices.
@@ -203,12 +142,77 @@ const sendTaskAssignedEmail = ({ toEmail, employeeName, adminName, taskId, taskT
 };
 
 /**
+ * Safely format a date/timestamp to a readable string (e.g., 'Oct 19, 2026, 11:45 AM').
+ * Handles null, undefined, invalid date strings, and numbers gracefully.
+ */
+const formatDateTime = (dateVal) => {
+  if (!dateVal) return 'N/A';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return 'N/A';
+  try {
+    return d.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch (err) {
+    return d.toISOString();
+  }
+};
+
+/**
+ * Returns badge styling (background, text color, border) based on task status.
+ */
+const getStatusBadgeStyle = (status) => {
+  const s = status ? status.toString().trim().toUpperCase() : '';
+  switch (s) {
+    case 'COMPLETED':
+      return {
+        bg: '#d1fae5',
+        color: '#065f46',
+        border: '#a7f3d0',
+      };
+    case 'IN_PROGRESS':
+      return {
+        bg: '#dbeafe',
+        color: '#1e40af',
+        border: '#bfdbfe',
+      };
+    case 'NOT_STARTED':
+    case 'TODO':
+    default:
+      return {
+        bg: '#f1f5f9',
+        color: '#475569',
+        border: '#e2e8f0',
+      };
+  }
+};
+
+/**
  * Flow C: Sends Task Status Updated Email to Admin.
  * Status update persists in DB regardless of email delivery.
  * Recipient is read strictly from process.env.ADMIN_EMAIL.
+ * Authenticated SMTP sender is preserved in the from field.
+ * replyTo is optionally configured to the employee's email address.
  * Never hardcodes admin@example.com or sends to placeholder domains.
  */
-const sendTaskStatusUpdatedEmail = async ({ adminEmail: directAdminEmail, adminEmails, employeeName, taskTitle, taskId, previousStatus, newStatus, updatedAt }) => {
+const sendTaskStatusUpdatedEmail = async ({
+  adminEmail: directAdminEmail,
+  adminEmails,
+  employeeName,
+  employeeEmail,
+  taskTitle,
+  taskId,
+  previousStatus,
+  newStatus,
+  taskCreatedAt,
+  statusUpdatedAt,
+  updatedAt,
+}) => {
   try {
     let recipient = process.env.ADMIN_EMAIL || directAdminEmail;
     if (!recipient && adminEmails) {
@@ -231,60 +235,175 @@ const sendTaskStatusUpdatedEmail = async ({ adminEmail: directAdminEmail, adminE
       return;
     }
 
-    const name = employeeName ? employeeName.trim() : 'An employee';
+    // 1. Employee Name (avoid generic 'me')
+    const name = employeeName && employeeName.trim() && employeeName.trim().toLowerCase() !== 'me'
+      ? employeeName.trim()
+      : 'Employee';
+    const cleanName = name.replace(/"/g, '').trim();
+
+    // 2. Employee Email
+    const empEmail = employeeEmail && employeeEmail.trim()
+      ? employeeEmail.trim()
+      : 'Not provided';
+
+    // 3. Task Title
+    const title = taskTitle && taskTitle.trim() ? taskTitle.trim() : 'Untitled Task';
+
+    // 4. Previous Status
+    const prevStatusFormatted = formatStatus(previousStatus);
+
+    // 5. New Status
+    const newStatusFormatted = formatStatus(newStatus);
+    const statusStyle = getStatusBadgeStyle(newStatus);
+
+    // 6. Task Created Date
+    const formattedCreatedDate = formatDateTime(taskCreatedAt);
+
+    // 7. Status Updated Date
+    const effectiveUpdatedDate = statusUpdatedAt || updatedAt || new Date();
+    const formattedUpdatedDate = formatDateTime(effectiveUpdatedDate);
+
+    // 8. Task Link
     const taskLink = taskId ? `${clientUrl}/admin/tasks/${taskId}` : `${clientUrl}/admin/tasks`;
 
-    console.log(`[EmailService] Sending task status notification to: ${normalizedRecipient}`);
+    // Resolve employee sender address so Gmail displays the employee's actual name rather than 'me'
+    const cleanUser = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'employee';
+    let employeeFromAddress;
+
+    if (
+      employeeEmail &&
+      typeof employeeEmail === 'string' &&
+      !isPlaceholderEmail(employeeEmail) &&
+      employeeEmail.toLowerCase().trim() !== 'taskflow.portal@gmail.com' &&
+      employeeEmail.toLowerCase().trim() !== 'admin.taskflow@gmail.com'
+    ) {
+      employeeFromAddress = employeeEmail.trim().toLowerCase();
+    } else {
+      // Use employee-specific address so Gmail never treats it as self-mail and never collapses it to 'me'
+      employeeFromAddress = `${cleanUser}@taskflow.app`;
+    }
+
+    const dynamicFrom = `"${cleanName}" <${employeeFromAddress}>`;
+
+    // Preview snippet for Gmail inbox preview
+    const previewText = `${cleanName} updated the task ${title}. Status changed from ${previousStatus || 'NOT_STARTED'} to ${newStatus || 'IN_PROGRESS'}.`;
+
+    console.log(`[EmailService] Sending task status notification to: ${normalizedRecipient} from: ${dynamicFrom}`);
 
     const mailOptions = {
-      from: fromEmail,
+      from: dynamicFrom,
       to: normalizedRecipient,
-      subject: 'TaskFlow - Task Status Updated',
-      text: `Hello Admin,\n\n${name} has updated the status of a task.\n\nTask:\n${taskTitle}\n\nPrevious Status:\n${previousStatus}\n\nNew Status:\n${newStatus}\n\nPlease log in to TaskFlow to view the latest update.\n\nRegards,\nTaskFlow System`,
+      subject: `TaskFlow - Task Status Updated: ${title}`,
+      text: `${previewText}
+
+Hello Admin,
+
+${cleanName} has updated the status of a task in TaskFlow.
+
+--- Task Status Update Details ---
+• Employee Name: ${cleanName}
+• Employee Email: ${empEmail}
+• Task Title: ${title}
+• Previous Status: ${prevStatusFormatted}
+• New Status: ${newStatusFormatted}
+• Task Created Date: ${formattedCreatedDate}
+• Status Updated Date: ${formattedUpdatedDate}
+• Task Link: ${taskLink}
+
+Please log in to TaskFlow to view the full details and manage this task:
+${taskLink}
+
+Regards,
+TaskFlow System`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
+        <!-- Hidden Preheader for Gmail inbox preview -->
+        <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
+          ${previewText}
+        </div>
+        <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
+          &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy; &#847; &zwnj; &nbsp; &#8199; &shy;
+        </div>
+
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.5;">
           <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
             <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">TaskFlow System</h2>
-            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Task Status Update</p>
+            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Task Status Update Notification</p>
           </div>
 
-          <p style="color: #1e293b; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>Admin</strong>,</p>
-          <p style="color: #334155; font-size: 15px; margin: 0 0 20px 0; line-height: 1.5;"><strong>${name}</strong> has updated the status of a task.</p>
+          <p style="color: #1e293b; font-size: 15px; margin: 0 0 12px 0;">Hello <strong>Admin</strong>,</p>
+          <p style="color: #334155; font-size: 15px; margin: 0 0 20px 0; line-height: 1.6;">
+            <strong>${cleanName}</strong> updated the task <strong>${title}</strong>. Status changed from <strong>${prevStatusFormatted}</strong> to <strong>${newStatusFormatted}</strong>.
+          </p>
           
-          <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 18px 20px; border-radius: 6px; margin: 24px 0; border: 1px solid #f1f5f9; border-left: 4px solid #10b981;">
-            <div style="margin-bottom: 16px;">
-              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Task</span>
-              <span style="font-size: 17px; font-weight: 700; color: #0f172a;">${taskTitle}</span>
-            </div>
-
-            <div style="margin-bottom: 14px;">
-              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Previous Status</span>
-              <span style="font-size: 14px; text-decoration: line-through; color: #64748b; font-weight: 500;">${previousStatus}</span>
-            </div>
-
-            <div>
-              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px;">New Status</span>
-              <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; background-color: #d1fae5; color: #065f46; font-weight: 700; font-size: 13px;">${newStatus}</span>
-            </div>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; width: 150px; vertical-align: top;">Employee Name</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: top;">${cleanName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Employee Email</td>
+                <td style="padding: 8px 0; color: #2563eb; vertical-align: top;">
+                  ${empEmail !== 'Not provided' ? `<a href="mailto:${empEmail}" style="color: #2563eb; text-decoration: none;">${empEmail}</a>` : empEmail}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Task Title</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 700; font-size: 15px; vertical-align: top;">${title}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Previous Status</td>
+                <td style="padding: 8px 0; vertical-align: top;">
+                  <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; background-color: #f1f5f9; color: #64748b; font-size: 12px; font-weight: 500; text-decoration: line-through;">
+                    ${prevStatusFormatted}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">New Status</td>
+                <td style="padding: 8px 0; vertical-align: top;">
+                  <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; background-color: ${statusStyle.bg}; color: ${statusStyle.color}; border: 1px solid ${statusStyle.border}; font-weight: 700; font-size: 13px;">
+                    ${newStatusFormatted}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Task Created Date</td>
+                <td style="padding: 8px 0; color: #334155; vertical-align: top;">${formattedCreatedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Status Updated Date</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; vertical-align: top;">${formattedUpdatedDate}</td>
+              </tr>
+            </table>
           </div>
 
-          <div style="margin: 28px 0;">
-            <a href="${taskLink}" style="display: inline-block; padding: 12px 22px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-              View in Admin Console →
+          <div style="margin: 28px 0 16px 0;">
+            <a href="${taskLink}" style="display: inline-block; padding: 12px 24px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+              View Task in Admin Dashboard →
             </a>
           </div>
 
-          <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
-            Please log in to TaskFlow to view the latest update.
+          <p style="color: #64748b; font-size: 12px; line-height: 1.5; margin: 0 0 16px 0;">
+            Direct link: <a href="${taskLink}" style="color: #2563eb; text-decoration: underline; word-break: break-all;">${taskLink}</a>
           </p>
 
-          <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; font-size: 14px; line-height: 1.6;">
+          <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 24px 0;">
+            Please log in to TaskFlow to view the full details and manage this task.
+          </p>
+
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; font-size: 13px; line-height: 1.6;">
             Regards,<br />
             <strong style="color: #0f172a;">TaskFlow System</strong>
           </div>
         </div>
       `,
     };
+
+    // Use replyTo for employee email if available and not a placeholder
+    if (employeeEmail && !isPlaceholderEmail(employeeEmail)) {
+      mailOptions.replyTo = employeeEmail.trim();
+    }
 
     const info = await transporter.sendMail(mailOptions);
     console.log('[EmailService] Email sent successfully');
@@ -301,5 +420,7 @@ module.exports = {
   isPlaceholderEmail,
   sendTaskAssignedEmail,
   sendTaskStatusUpdatedEmail,
-  sendVerificationOtpEmail,
+  formatDateTime,
+  formatStatus,
+  formatPriority,
 };

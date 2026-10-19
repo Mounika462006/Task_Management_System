@@ -8,7 +8,7 @@ const User = require('../models/User');
 const ensureAdminUser = async () => {
   try {
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin.taskflow@gmail.com').toLowerCase().trim();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+    const adminPassword = (process.env.ADMIN_PASSWORD || 'Admin@taskflow').trim();
 
     // 1. Look for admin by the configured email
     let admin = await User.findOne({ email: adminEmail }).select('+password');
@@ -53,6 +53,58 @@ const ensureAdminUser = async () => {
   }
 };
 
+/**
+ * Ensures at least a baseline set of employee accounts exists in MongoDB
+ * so that tasks can be assigned without encountering an empty employee list.
+ */
+const ensureDefaultEmployees = async () => {
+  try {
+    const employeeCount = await User.countDocuments({
+      role: { $in: ['EMPLOYEE', 'employee', 'Employee'] },
+    });
+
+    if (employeeCount === 0) {
+      console.log('[Auth] No employees found in database. Seeding initial employee accounts...');
+      await User.create([
+        {
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          password: 'Employee@123456',
+          role: 'EMPLOYEE',
+          department: 'Engineering',
+          designation: 'Frontend Developer',
+          employeeId: 'EMP-001',
+          emailVerified: true,
+        },
+        {
+          name: 'Jane Smith',
+          email: 'jane.smith@example.com',
+          password: 'Employee@123456',
+          role: 'EMPLOYEE',
+          department: 'Product',
+          designation: 'Product Designer',
+          employeeId: 'EMP-002',
+          emailVerified: true,
+        },
+        {
+          name: 'Alex Kim',
+          email: 'alex.kim@example.com',
+          password: 'Employee@123456',
+          role: 'EMPLOYEE',
+          department: 'Engineering',
+          designation: 'Backend Developer',
+          employeeId: 'EMP-003',
+          emailVerified: true,
+        },
+      ]);
+      console.log('[Auth] Successfully initialized default employees (John Doe, Jane Smith, Alex Kim)');
+    }
+  } catch (error) {
+    console.error(`[Auth] Error ensuring default employees: ${error.message}`);
+  }
+};
+
 module.exports = {
   ensureAdminUser,
+  ensureDefaultEmployees,
 };

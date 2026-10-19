@@ -1,9 +1,18 @@
+const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const serverEnvPath = path.resolve(__dirname, '../.env');
+const rootEnvPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(serverEnvPath)) {
+  require('dotenv').config({ path: serverEnvPath });
+} else if (fs.existsSync(rootEnvPath)) {
+  require('dotenv').config({ path: rootEnvPath });
+} else {
+  require('dotenv').config();
+}
 const app = require('./app');
 const connectDB = require('./config/database');
 const { verifyTransporter } = require('./config/mail');
-const { ensureAdminUser } = require('./services/adminService');
+const { ensureAdminUser, ensureDefaultEmployees } = require('./services/adminService');
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,10 +24,13 @@ const startServer = async () => {
     // Ensure fixed Admin account is synchronized in MongoDB
     await ensureAdminUser();
 
-    // Verify SMTP configuration at startup
-    await verifyTransporter();
+    // Ensure initial employee accounts exist for task assignments
+    await ensureDefaultEmployees();
 
-    const server = app.listen(PORT, () => {
+    // Verify SMTP configuration in background without blocking server startup
+    verifyTransporter().catch((err) => console.error('[EmailService] SMTP check error:', err.message));
+
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`[TaskFlow Server] Running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
 
@@ -40,3 +52,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+module.exports = { startServer };

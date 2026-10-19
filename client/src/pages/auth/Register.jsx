@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, AlertCircle, ArrowRight, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { authService } from '../../services/authService';
+import Logo from '../../components/common/Logo';
 
 export const Register = () => {
   const [name, setName] = useState('');
@@ -133,21 +134,8 @@ export const Register = () => {
 
         {/* Brand & Role Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '10px',
-              backgroundColor: '#f0f9ff',
-              color: '#0284c7',
-              border: '1px solid #bae6fd',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '1rem',
-            }}
-          >
-            <UserPlus size={24} strokeWidth={2} />
+          <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+            <Logo size="md" subtitle="Enterprise Task Management" to="/" />
           </div>
 
           <div style={{ display: 'inline-block', marginBottom: '0.5rem' }}>
@@ -159,12 +147,12 @@ export const Register = () => {
                 letterSpacing: '0.05em',
                 padding: '2px 8px',
                 borderRadius: '9999px',
-                backgroundColor: '#f0f9ff',
-                color: '#0284c7',
-                border: '1px solid #bae6fd',
+                backgroundColor: '#eff6ff',
+                color: '#1d4ed8',
+                border: '1px solid #bfdbfe',
               }}
             >
-              Step 1 of 2: Registration
+              Employee Registration
             </span>
           </div>
 

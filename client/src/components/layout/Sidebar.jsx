@@ -10,11 +10,11 @@ import {
   Settings,
   LogOut,
   X,
-  Layers,
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { useSidebar } from '../../context/SidebarContext';
 import { getInitials } from '../../utils/helpers';
+import Logo from '../common/Logo';
 
 export const Sidebar = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -85,38 +85,11 @@ export const Sidebar = () => {
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '8px',
-                backgroundColor: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-              }}
-            >
-              <Layers size={20} strokeWidth={2.2} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em', color: '#0f172a' }}>
-                TaskFlow
-              </div>
-              <div
-                style={{
-                  fontSize: '0.6875rem',
-                  color: '#64748b',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  fontWeight: 600,
-                }}
-              >
-                {isAdmin ? 'Enterprise Admin' : 'Employee Portal'}
-              </div>
-            </div>
-          </div>
+          <Logo
+            size="sm"
+            subtitle={isAdmin ? 'Enterprise Admin' : 'Employee Portal'}
+            to={isAdmin ? '/admin/dashboard' : '/employee/dashboard'}
+          />
 
           {/* Close button for mobile drawer */}
           <button
