@@ -1,4 +1,4 @@
-﻿const nodemailer = require("nodemailer");
+const nodemailer = require("nodemailer");
 
 let _resendClient = null;
 
@@ -67,6 +67,11 @@ async function verifyTransporter() {
 module.exports = {
   sendEmail,
   verifyTransporter,
+  createNodemailerTransport,
+  get transporter() {
+    return createNodemailerTransport();
+  },
   fromEmail: process.env.EMAIL_FROM || '"TaskFlow System" <taskflow.portal@gmail.com>',
   adminEmail: process.env.ADMIN_EMAIL || "admin.taskflow@gmail.com",
 };
+

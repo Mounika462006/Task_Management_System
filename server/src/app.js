@@ -75,8 +75,16 @@ app.get('/api/health', (req, res) => {
 // Diagnostic email health check endpoint
 app.get('/api/health/email', async (req, res) => {
   try {
-    const { transporter } = require('./config/mail');
-    await transporter.verify();
+    const { verifyTransporter, sendEmail } = require('./config/mail');
+    const isVerified = await verifyTransporter();
+
+    if (!isVerified) {
+      throw new Error(
+        process.env.RESEND_API_KEY
+          ? 'Resend API key verification failed'
+          : 'Email transporter verification failed (check RESEND_API_KEY or SMTP credentials)'
+      );
+    }
 
     // If a ?to=email is passed, send a lightweight test verification email
     const testTo = req.query.to;
@@ -84,12 +92,12 @@ app.get('/api/health/email', async (req, res) => {
     let messageId = null;
 
     if (testTo && testTo.includes('@')) {
-      const info = await transporter.sendMail({
+      const info = await sendEmail({
         from: process.env.EMAIL_FROM || '"TaskFlow System" <taskflow.portal@gmail.com>',
         to: testTo.trim(),
-        subject: 'TaskFlow - SMTP Verification Test',
+        subject: 'TaskFlow - Email Verification Test',
         text: 'This is a test notification confirming that TaskFlow email dispatch is fully operational!',
-        html: '<div style="font-family:sans-serif;padding:20px;border:1px solid #e2e8f0;border-radius:8px;"><h3>TaskFlow Email Test</h3><p>Your cloud server can successfully send and receive emails!</p></div>',
+        html: '<div style="font-family:sans-serif;padding:20px;border:1px solid #e2e8f0;border-radius:8px;"><h3>TaskFlow Email Test</h3><p>Your cloud server can successfully send emails!</p></div>',
       });
       mailSent = true;
       messageId = info.messageId;
@@ -97,20 +105,24 @@ app.get('/api/health/email', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'SMTP connection verified successfully',
+      message: 'Email service verified successfully',
+      mode: process.env.RESEND_API_KEY ? 'Resend HTTP API (Cloud)' : 'Nodemailer SMTP (Local)',
       mailSent,
       messageId,
-      configuredUser: process.env.SMTP_USER || 'taskflow.portal@gmail.com',
-      hasPassword: Boolean(process.env.SMTP_PASSWORD),
+      configuredUser: process.env.RESEND_API_KEY ? 'Resend API' : (process.env.SMTP_USER || 'taskflow.portal@gmail.com'),
+      hasPassword: Boolean(process.env.RESEND_API_KEY || process.env.SMTP_PASSWORD),
     });
   } catch (error) {
-    console.error('[EmailService] SMTP verification endpoint error:', error.message);
+    console.error('[EmailService] Email verification endpoint error:', error.message);
     res.status(500).json({
       success: false,
-      message: 'SMTP verification failed',
+      message: 'Email verification failed',
       error: error.message,
+      hasResendKey: Boolean(process.env.RESEND_API_KEY),
       hasPassword: Boolean(process.env.SMTP_PASSWORD),
-      hint: 'Ensure SMTP_PASSWORD (Google App Password) is added in your Cloud Environment Variables without spaces.',
+      hint: process.env.RESEND_API_KEY
+        ? 'Check your RESEND_API_KEY in Render Environment Variables.'
+        : 'Render free tier blocks SMTP ports. Add RESEND_API_KEY to Render Environment Variables for 100% working emails.',
     });
   }
 });
