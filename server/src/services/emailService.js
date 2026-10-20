@@ -1,4 +1,4 @@
-const { transporter, fromEmail, adminEmail } = require('../config/mail');
+const { sendEmail, fromEmail, adminEmail } = require('../config/mail');
 
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -130,7 +130,7 @@ const sendTaskAssignedEmail = async ({ toEmail, employeeName, adminName, taskId,
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(mailOptions);
     console.log(`[EmailService] Task Assigned notification successfully dispatched to ${normalizedTo} (ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
@@ -403,7 +403,7 @@ TaskFlow System`,
       mailOptions.replyTo = employeeEmail.trim();
     }
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(mailOptions);
     console.log('[EmailService] Email sent successfully');
     console.log(`[EmailService] Message ID: ${info.messageId}`);
     return { success: true, messageId: info.messageId, info };
