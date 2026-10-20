@@ -4,7 +4,6 @@
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20Application-0070F3?style=for-the-badge&logo=vercel&logoColor=white)](https://task-management-system-two-xi.vercel.app)
 [![API Status](https://img.shields.io/badge/API-Render%20Cloud-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://task-management-system-uu4p.onrender.com/api/health)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 **A full-stack, enterprise-grade task orchestration platform engineered with the MERN stack (MongoDB Atlas, Express.js, React, Node.js), featuring strict Role-Based Access Control (RBAC) and automated transactional email dispatch via Brevo & Resend Cloud APIs.**
 
@@ -198,7 +197,3 @@ Visit **`http://localhost:5173`** in your browser.
 - GitHub: [@Mounika462006](https://github.com/Mounika462006)  
 - Project: [Task_Management_System](https://github.com/Mounika462006/Task_Management_System)
 
----
-
-## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
