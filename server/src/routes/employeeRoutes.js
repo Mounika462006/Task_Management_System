@@ -22,6 +22,12 @@ router.put(
   validateBody(updateEmployeeSchema),
   employeeController.updateEmployee
 );
+router.patch(
+  '/:id',
+  validateObjectIdParam('id'),
+  validateBody(updateEmployeeSchema),
+  employeeController.updateEmployee
+);
 router.delete('/:id', validateObjectIdParam('id'), employeeController.deleteEmployee);
 
 module.exports = router;
