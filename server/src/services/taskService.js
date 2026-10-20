@@ -92,17 +92,21 @@ const createTask = async (currentUser, taskData) => {
     .populate('assignedTo', 'name email role')
     .populate('createdBy', 'name email');
 
-  // Trigger fire-and-log email to employee
-  sendTaskAssignedEmail({
-    toEmail: employee.email,
-    employeeName: employee.name,
-    adminName: currentUser.name,
-    taskId: populatedTask._id,
-    taskTitle: populatedTask.title,
-    description: populatedTask.description,
-    priority: populatedTask.priority,
-    status: populatedTask.status,
-  });
+  // Trigger fire-and-log email to employee (awaited so serverless execution context does not freeze)
+  try {
+    await sendTaskAssignedEmail({
+      toEmail: employee.email,
+      employeeName: employee.name,
+      adminName: currentUser.name,
+      taskId: populatedTask._id,
+      taskTitle: populatedTask.title,
+      description: populatedTask.description,
+      priority: populatedTask.priority,
+      status: populatedTask.status,
+    });
+  } catch (emailErr) {
+    console.error('[EmailService] Task Assigned notification error:', emailErr.message);
+  }
 
   return populatedTask;
 };
@@ -156,16 +160,20 @@ const updateTask = async (currentUser, taskId, updateData) => {
 
   // If assignedTo changed, notify the newly assigned employee
   if (assignedEmployee) {
-    sendTaskAssignedEmail({
-      toEmail: assignedEmployee.email,
-      employeeName: assignedEmployee.name,
-      adminName: currentUser.name,
-      taskId: updatedTask._id,
-      taskTitle: updatedTask.title,
-      description: updatedTask.description,
-      priority: updatedTask.priority,
-      status: updatedTask.status,
-    });
+    try {
+      await sendTaskAssignedEmail({
+        toEmail: assignedEmployee.email,
+        employeeName: assignedEmployee.name,
+        adminName: currentUser.name,
+        taskId: updatedTask._id,
+        taskTitle: updatedTask.title,
+        description: updatedTask.description,
+        priority: updatedTask.priority,
+        status: updatedTask.status,
+      });
+    } catch (emailErr) {
+      console.error('[EmailService] Task Assigned notification error:', emailErr.message);
+    }
   }
 
   return updatedTask;

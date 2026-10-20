@@ -60,83 +60,83 @@ const formatStatus = (status) => {
  * Non-blocking: failures are logged server-side only and do not fail the task-creation request.
  * Seed accounts ending in @example.com are safely skipped so Gmail never generates "Address not found" bounce notices.
  */
-const sendTaskAssignedEmail = ({ toEmail, employeeName, adminName, taskId, taskTitle, description, priority, status }) => {
-  setImmediate(async () => {
-    try {
-      if (!toEmail) {
-        console.warn('[EmailService] Task Assigned: No recipient email provided.');
-        return;
-      }
+const sendTaskAssignedEmail = async ({ toEmail, employeeName, adminName, taskId, taskTitle, description, priority, status }) => {
+  try {
+    if (!toEmail) {
+      console.warn('[EmailService] Task Assigned: No recipient email provided.');
+      return { success: false, error: 'No recipient email' };
+    }
 
-      const normalizedTo = toEmail.trim().toLowerCase();
+    const normalizedTo = toEmail.trim().toLowerCase();
 
-      // Guard: Seed/demo accounts must not be treated as real email recipients
-      if (isPlaceholderEmail(normalizedTo)) {
-        console.log(`[EmailService] Skipping real task assignment email: recipient "${normalizedTo}" is a demo/placeholder address.`);
-        return;
-      }
+    // Guard: Seed/demo accounts must not be treated as real email recipients
+    if (isPlaceholderEmail(normalizedTo)) {
+      console.log(`[EmailService] Skipping real task assignment email: recipient "${normalizedTo}" is a demo/placeholder address.`);
+      return { success: false, skipped: true };
+    }
 
-      const name = employeeName ? employeeName.trim() : 'Team Member';
-      const formattedPriority = formatPriority(priority);
-      const taskDesc = description ? description.trim() : 'No description provided.';
-      const taskLink = taskId ? `${clientUrl}/employee/tasks/${taskId}` : `${clientUrl}/employee/tasks`;
+    const name = employeeName ? employeeName.trim() : 'Team Member';
+    const formattedPriority = formatPriority(priority);
+    const taskDesc = description ? description.trim() : 'No description provided.';
+    const taskLink = taskId ? `${clientUrl}/employee/tasks/${taskId}` : `${clientUrl}/employee/tasks`;
 
-      const mailOptions = {
-        from: fromEmail,
-        to: normalizedTo,
-        subject: 'TaskFlow - New Task Assigned',
-        text: `Hello ${name},\n\nA new task has been assigned to you.\n\nTask:\n${taskTitle}\n\nDescription:\n${taskDesc}\n\nPriority:\n${formattedPriority}\n\nPlease log in to TaskFlow to view and manage the task.\n\nRegards,\nTaskFlow System`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
-            <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
-              <h2 style="color: #2563eb; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">TaskFlow System</h2>
-              <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">New Task Assignment</p>
+    const mailOptions = {
+      from: fromEmail,
+      to: normalizedTo,
+      subject: 'TaskFlow - New Task Assigned',
+      text: `Hello ${name},\n\nA new task has been assigned to you.\n\nTask:\n${taskTitle}\n\nDescription:\n${taskDesc}\n\nPriority:\n${formattedPriority}\n\nPlease log in to TaskFlow to view and manage the task.\n\nRegards,\nTaskFlow System`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
+          <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
+            <h2 style="color: #2563eb; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">TaskFlow System</h2>
+            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">New Task Assignment</p>
+          </div>
+
+          <p style="color: #1e293b; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>${name}</strong>,</p>
+          <p style="color: #334155; font-size: 15px; margin: 0 0 20px 0; line-height: 1.5;">A new task has been assigned to you.</p>
+          
+          <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 18px 20px; border-radius: 6px; margin: 24px 0; border: 1px solid #f1f5f9; border-left: 4px solid #2563eb;">
+            <div style="margin-bottom: 16px;">
+              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Task</span>
+              <span style="font-size: 17px; font-weight: 700; color: #0f172a;">${taskTitle}</span>
             </div>
 
-            <p style="color: #1e293b; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>${name}</strong>,</p>
-            <p style="color: #334155; font-size: 15px; margin: 0 0 20px 0; line-height: 1.5;">A new task has been assigned to you.</p>
-            
-            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 18px 20px; border-radius: 6px; margin: 24px 0; border: 1px solid #f1f5f9; border-left: 4px solid #2563eb;">
-              <div style="margin-bottom: 16px;">
-                <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Task</span>
-                <span style="font-size: 17px; font-weight: 700; color: #0f172a;">${taskTitle}</span>
-              </div>
-
-              <div style="margin-bottom: 16px;">
-                <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Description</span>
-                <span style="font-size: 14px; color: #475569; white-space: pre-wrap; line-height: 1.6;">${taskDesc}</span>
-              </div>
-
-              <div>
-                <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px;">Priority</span>
-                <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; background-color: #e0e7ff; color: #3730a3; font-weight: 700; font-size: 13px;">${formattedPriority}</span>
-              </div>
+            <div style="margin-bottom: 16px;">
+              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px;">Description</span>
+              <span style="font-size: 14px; color: #475569; white-space: pre-wrap; line-height: 1.6;">${taskDesc}</span>
             </div>
 
-            <div style="margin: 28px 0;">
-              <a href="${taskLink}" style="display: inline-block; padding: 12px 22px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-                Log In to TaskFlow →
-              </a>
-            </div>
-
-            <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
-              Please log in to TaskFlow to view and manage the task.
-            </p>
-
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; font-size: 14px; line-height: 1.6;">
-              Regards,<br />
-              <strong style="color: #0f172a;">TaskFlow System</strong>
+            <div>
+              <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px;">Priority</span>
+              <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; background-color: #e0e7ff; color: #3730a3; font-weight: 700; font-size: 13px;">${formattedPriority}</span>
             </div>
           </div>
-        `,
-      };
 
-      await transporter.sendMail(mailOptions);
-      console.log(`[EmailService] Task Assigned notification successfully dispatched to ${normalizedTo}`);
-    } catch (error) {
-      console.error(`[EmailService] Failed to send Task Assigned email: ${error.message}`);
-    }
-  });
+          <div style="margin: 28px 0;">
+            <a href="${taskLink}" style="display: inline-block; padding: 12px 22px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+              Log In to TaskFlow →
+            </a>
+          </div>
+
+          <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
+            Please log in to TaskFlow to view and manage the task.
+          </p>
+
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; color: #475569; font-size: 14px; line-height: 1.6;">
+            Regards,<br />
+            <strong style="color: #0f172a;">TaskFlow System</strong>
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EmailService] Task Assigned notification successfully dispatched to ${normalizedTo} (ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[EmailService] Failed to send Task Assigned email: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 };
 
 /**

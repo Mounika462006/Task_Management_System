@@ -5,9 +5,6 @@ const nodemailer = require('nodemailer');
  * Never hardcodes credentials or exposes secrets.
  */
 function createTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const secure = process.env.SMTP_SECURE === 'true';
   const user = process.env.SMTP_USER || 'taskflow.portal@gmail.com';
   const pass = process.env.SMTP_PASSWORD;
 
@@ -15,10 +12,26 @@ function createTransporter() {
     console.error('[EmailService] CRITICAL WARNING: SMTP_PASSWORD is not set in environment!');
   }
 
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+
+  // For Gmail, service: 'gmail' automatically manages SSL/port 465 and avoids STARTTLS stalls
+  if (host === 'smtp.gmail.com') {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
+
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
   return nodemailer.createTransport({
     host,
     port,
-    secure, // false for port 587 STARTTLS
+    secure,
     auth: {
       user,
       pass,
