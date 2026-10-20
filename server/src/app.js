@@ -103,14 +103,24 @@ app.get('/api/health/email', async (req, res) => {
       messageId = info.messageId;
     }
 
+    const activeMode = process.env.BREVO_API_KEY
+      ? 'Brevo HTTP API (Sends to ANY email)'
+      : process.env.RESEND_API_KEY
+      ? 'Resend HTTP API'
+      : 'Nodemailer SMTP (Local)';
+
     res.status(200).json({
       success: true,
       message: 'Email service verified successfully',
-      mode: process.env.RESEND_API_KEY ? 'Resend HTTP API (Cloud)' : 'Nodemailer SMTP (Local)',
+      mode: activeMode,
       mailSent,
       messageId,
-      configuredUser: process.env.RESEND_API_KEY ? 'Resend API' : (process.env.SMTP_USER || 'taskflow.portal@gmail.com'),
-      hasPassword: Boolean(process.env.RESEND_API_KEY || process.env.SMTP_PASSWORD),
+      configuredUser: process.env.BREVO_API_KEY
+        ? `Brevo (${process.env.BREVO_SENDER || process.env.SMTP_USER || 'Admin'})`
+        : process.env.RESEND_API_KEY
+        ? 'Resend API'
+        : (process.env.SMTP_USER || 'taskflow.portal@gmail.com'),
+      hasPassword: Boolean(process.env.BREVO_API_KEY || process.env.RESEND_API_KEY || process.env.SMTP_PASSWORD),
     });
   } catch (error) {
     console.error('[EmailService] Email verification endpoint error:', error.message);
@@ -118,11 +128,10 @@ app.get('/api/health/email', async (req, res) => {
       success: false,
       message: 'Email verification failed',
       error: error.message,
+      hasBrevoKey: Boolean(process.env.BREVO_API_KEY),
       hasResendKey: Boolean(process.env.RESEND_API_KEY),
       hasPassword: Boolean(process.env.SMTP_PASSWORD),
-      hint: process.env.RESEND_API_KEY
-        ? 'Check your RESEND_API_KEY in Render Environment Variables.'
-        : 'Render free tier blocks SMTP ports. Add RESEND_API_KEY to Render Environment Variables for 100% working emails.',
+      hint: 'Add BREVO_API_KEY (to send to ANY email) or RESEND_API_KEY in Render Environment Variables.',
     });
   }
 });
