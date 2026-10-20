@@ -212,17 +212,17 @@ const sendTaskStatusUpdatedEmail = async ({
   updatedAt,
 }) => {
   try {
-    let recipient = process.env.ADMIN_EMAIL || directAdminEmail;
-    if (!recipient && adminEmails) {
-      recipient = Array.isArray(adminEmails) ? adminEmails[0] : adminEmails;
-    }
-    if (!recipient || isPlaceholderEmail(recipient)) {
-      recipient = process.env.ADMIN_EMAIL || adminEmail || 'admin.taskflow@gmail.com';
-    }
+    // Intelligent Admin email resolution:
+    // If admin.taskflow@gmail.com is provided, fall back to the actual verified email (BREVO_SENDER or SMTP_USER)
+    const isSeedAdmin = (e) => !e || e.toLowerCase().trim() === 'admin.taskflow@gmail.com' || isPlaceholderEmail(e);
 
-    if (!recipient) {
-      console.warn('[EmailService] Status Updated: No admin email found to notify.');
-      return;
+    let recipient = null;
+    if (directAdminEmail && !isSeedAdmin(directAdminEmail)) {
+      recipient = directAdminEmail;
+    } else if (process.env.ADMIN_EMAIL && !isSeedAdmin(process.env.ADMIN_EMAIL)) {
+      recipient = process.env.ADMIN_EMAIL;
+    } else {
+      recipient = process.env.BREVO_SENDER || process.env.SMTP_USER || 'taskflow.portal@gmail.com';
     }
 
     const normalizedRecipient = recipient.trim().toLowerCase();

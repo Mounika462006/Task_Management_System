@@ -1,4 +1,4 @@
-﻿const nodemailer = require("nodemailer");
+const nodemailer = require("nodemailer");
 
 let _resendClient = null;
 
@@ -30,7 +30,13 @@ function createNodemailerTransport() {
 async function sendWithBrevo({ from, to, replyTo, subject, text, html }) {
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SENDER || process.env.SMTP_USER || "taskflow.portal@gmail.com";
-  const senderName = process.env.BREVO_SENDER_NAME || "TaskFlow System";
+  let senderName = process.env.BREVO_SENDER_NAME || "TaskFlow System";
+  if (from && typeof from === "string" && from.includes('"')) {
+    const match = from.match(/"([^"]+)"/);
+    if (match && match[1]) {
+      senderName = `${match[1]} (via TaskFlow)`;
+    }
+  }
 
   const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({
     email: typeof email === "string" ? email.trim() : email.email,

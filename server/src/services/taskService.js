@@ -213,7 +213,12 @@ const updateTaskStatus = async (currentUser, taskId, newStatus) => {
 
   // If updated by an employee, notify administrator via email
   if (currentUser.role === 'EMPLOYEE' && previousStatus !== newStatus) {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin.taskflow@gmail.com';
+    const isDummy = (e) => !e || e.toLowerCase().trim() === 'admin.taskflow@gmail.com';
+    const adminEmail = (updatedTask.createdBy && updatedTask.createdBy.email && !isDummy(updatedTask.createdBy.email))
+      ? updatedTask.createdBy.email
+      : (process.env.ADMIN_EMAIL && !isDummy(process.env.ADMIN_EMAIL)
+        ? process.env.ADMIN_EMAIL
+        : (process.env.BREVO_SENDER || process.env.SMTP_USER || 'taskflow.portal@gmail.com'));
 
     // Retrieve actual employee details from database/user session (strictly avoiding 'me')
     const employeeName = (currentUser && currentUser.name && currentUser.name.trim().toLowerCase() !== 'me')
