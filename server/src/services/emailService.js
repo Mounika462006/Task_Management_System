@@ -113,9 +113,9 @@ const sendTaskAssignedEmail = async ({ toEmail, employeeName, adminName, taskId,
           </div>
 
           <div style="margin: 28px 0;">
-            <a href="${taskLink}" style="display: inline-block; padding: 12px 22px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-              Log In to TaskFlow →
-            </a>
+            // <a href="${taskLink}" style="display: inline-block; padding: 12px 22px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            //   Log In to TaskFlow →
+            // </a>
           </div>
 
           <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
